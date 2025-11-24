@@ -1,0 +1,51 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: llm-inference-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: llm-inference
+  minReplicas: 1
+  maxReplicas: 2  # Limited by GPU availability!
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 180
+
+---
+# Note: HPA with GPU is problematic!
+# 
+# Issues:
+# 1. Each pod requests 1 full GPU
+# 2. Can only scale to number of available GPUs
+# 3. With 1 GPU, maxReplicas is effectively 1
+# 4. CPU/memory metrics don't reflect GPU utilization
+#
+# This HPA is included for demonstration, but won't solve
+# the GPU underutilization problem. See Phase 3 (Run:AI) for solution!
+

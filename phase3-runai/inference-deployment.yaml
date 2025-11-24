@@ -1,0 +1,96 @@
+# Run:AI Inference Deployment with GPU Fractions
+# This enables running 3 pods on 1 GPU!
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-inference-runai
+  namespace: runai-llm-inference  # Run:AI creates namespace per project
+  labels:
+    app: llm-inference
+    phase: phase3
+    runai/project: llm-inference
+spec:
+  replicas: 3  # Run 3 pods on 1 GPU using fractions!
+  selector:
+    matchLabels:
+      app: llm-inference-runai
+  template:
+    metadata:
+      labels:
+        app: llm-inference-runai
+        phase: phase3
+      annotations:
+        # Run:AI GPU fraction annotation
+        runai.ai/gpu-fraction: "0.33"  # Each pod gets 1/3 of GPU
+        runai.ai/project: "llm-inference"
+    spec:
+      schedulerName: runai-scheduler  # Use Run:AI scheduler
+      
+      containers:
+      - name: inference
+        image: llm-inference:phase2  # Same image as Phase 2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+        
+        # Resource requests with Run:AI GPU fraction
+        resources:
+          requests:
+            runai.ai/gpu-fraction: "0.33"  # 1/3 GPU per pod
+            memory: "10Gi"
+            cpu: "2"
+          limits:
+            memory: "12Gi"
+            cpu: "3"
+        
+        env:
+        - name: MODEL_PATH
+          value: "/app/model"
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"  # Run:AI handles GPU assignment
+        - name: CUDA_MPS_PIPE_DIRECTORY
+          value: "/tmp/nvidia-mps"  # Multi-Process Service for sharing
+        
+        volumeMounts:
+        - name: model-storage
+          mountPath: /app/model
+          readOnly: true
+        
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 120
+          periodSeconds: 30
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 90
+          periodSeconds: 10
+      
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: llm-model-storage
+
+---
+# Service for Run:AI deployment
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-inference-runai
+  namespace: runai-llm-inference
+spec:
+  type: NodePort
+  selector:
+    app: llm-inference-runai
+  ports:
+  - port: 8000
+    targetPort: 8000
+    nodePort: 30081
+    protocol: TCP
+

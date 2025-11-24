@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-inference
+  namespace: default
+  labels:
+    app: llm-inference
+    phase: phase2
+spec:
+  replicas: 1  # Start with 1, limited by GPU availability
+  selector:
+    matchLabels:
+      app: llm-inference
+  template:
+    metadata:
+      labels:
+        app: llm-inference
+        phase: phase2
+    spec:
+      # Node selector for GPU nodes (optional)
+      nodeSelector:
+        accelerator: nvidia-gpu  # Adjust based on your node labels
+      
+      # Tolerations for GPU taints (if applicable)
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      
+      containers:
+      - name: inference
+        image: llm-inference:phase2  # Build and push to your registry
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        
+        # GPU resource request - CRITICAL!
+        # Requests 1 full GPU per pod (K8s limitation)
+        resources:
+          requests:
+            nvidia.com/gpu: 1  # Request 1 GPU
+            memory: "12Gi"     # Model + overhead
+            cpu: "2"
+          limits:
+            nvidia.com/gpu: 1  # Limit to 1 GPU
+            memory: "16Gi"
+            cpu: "4"
+        
+        env:
+        - name: MODEL_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: llm-inference-config
+              key: MODEL_PATH
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"  # Use first GPU
+        - name: TRANSFORMERS_CACHE
+          value: "/app/model"
+        
+        volumeMounts:
+        - name: model-storage
+          mountPath: /app/model
+          readOnly: true
+        
+        # Liveness probe - check if server is responsive
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 120  # Allow time for model loading
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        # Readiness probe - check if ready to serve traffic
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Startup probe - for initial model loading
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 12  # 2 minutes max for startup
+      
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: llm-model-storage
+      
+      # Don't place multiple pods on same node (if scaling)
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: llm-inference
+              topologyKey: kubernetes.io/hostname
+

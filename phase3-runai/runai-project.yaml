@@ -1,0 +1,35 @@
+# Run:AI Project Configuration
+# Creates a project with GPU quota allocation
+
+apiVersion: run.ai/v1
+kind: Project
+metadata:
+  name: llm-inference
+spec:
+  # GPU quota for this project
+  # With 1 GPU, we can run multiple workloads using fractions!
+  gpuQuota: 1.0
+  
+  # CPU and memory quotas
+  cpuQuota: "8"
+  memoryQuota: "32Gi"
+  
+  # Default values for workloads in this project
+  defaults:
+    gpuLimit: 0.5  # Default GPU fraction per workload
+    cpuLimit: "2"
+    memoryLimit: "8Gi"
+  
+  # Node affinity (optional)
+  nodeAffinity:
+    matchLabels:
+      runai/gpu-enabled: "true"
+  
+  # Fairness policy
+  fairness:
+    # Allow workloads to use more than their request when GPU is idle
+    allowOverQuota: true
+    
+    # Maximum over-quota usage
+    maxOverQuota: 0.5  # Can use up to 1.5 GPUs when available
+

@@ -1,0 +1,74 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: llm-model-download
+  namespace: default
+spec:
+  template:
+    metadata:
+      labels:
+        app: model-download
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: download
+        image: python:3.10-slim
+        command:
+          - /bin/bash
+          - -c
+          - |
+            echo "Installing dependencies..."
+            pip install --no-cache-dir transformers huggingface-hub accelerate
+            
+            echo "Downloading model to /model..."
+            python3 -c "
+            from huggingface_hub import snapshot_download
+            import os
+            
+            model_id = os.getenv('MODEL_ID', 'meta-llama/Llama-3.2-3B-Instruct')
+            token = os.getenv('HF_TOKEN', None)
+            
+            print(f'Downloading {model_id}...')
+            snapshot_download(
+                repo_id=model_id,
+                local_dir='/model',
+                local_dir_use_symlinks=False,
+                token=token,
+                resume_download=True
+            )
+            print('Download complete!')
+            "
+            
+            echo "Model downloaded successfully!"
+            ls -lh /model/
+        env:
+        - name: MODEL_ID
+          value: "meta-llama/Llama-3.2-3B-Instruct"
+          # Alternative: "microsoft/Phi-3-mini-4k-instruct" (no token required)
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: huggingface-token
+              key: token
+              optional: true  # Set to false if token is required
+        volumeMounts:
+        - name: model-storage
+          mountPath: /model
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: llm-model-storage
+  backoffLimit: 3
+
+---
+# HuggingFace Token Secret (create this first if using Llama models)
+# kubectl create secret generic huggingface-token --from-literal=token=hf_your_token_here
+apiVersion: v1
+kind: Secret
+metadata:
+  name: huggingface-token
+  namespace: default
+type: Opaque
+stringData:
+  token: ""  # Replace with your HuggingFace token or create via kubectl
+

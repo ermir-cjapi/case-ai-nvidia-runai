@@ -1,0 +1,91 @@
+# Run:AI Fairness and Priority Policies
+
+apiVersion: run.ai/v1
+kind: WorkloadPolicy
+metadata:
+  name: llm-inference-policy
+  namespace: runai-llm-inference
+spec:
+  # Project this policy applies to
+  project: llm-inference
+  
+  # Workload priorities
+  priorities:
+    # Production inference workloads
+    - name: production
+      value: 100
+      description: "Production inference services"
+      guaranteedGPU: 70  # Guaranteed 70% of project quota
+      maxGPU: 100  # Can use up to 100% when available
+    
+    # Development/testing workloads
+    - name: development
+      value: 50
+      description: "Development and testing"
+      guaranteedGPU: 20  # Guaranteed 20% of project quota
+      maxGPU: 50  # Limited to 50% even when idle
+    
+    # Training jobs
+    - name: training
+      value: 80
+      description: "Model training jobs"
+      guaranteedGPU: 30  # Guaranteed 30% of project quota
+      maxGPU: 100  # Can use full quota when available
+      preemptible: true  # Can preempt lower-priority workloads
+  
+  # Fairness configuration
+  fairness:
+    # GPU time-slicing configuration
+    timeSlicing:
+      enabled: true
+      interval: 100ms  # Time slice interval
+    
+    # Multi-Process Service (MPS) for efficient GPU sharing
+    mps:
+      enabled: true
+      threadsPerProcess: 4
+    
+    # Over-quota behavior
+    overQuota:
+      allowOverQuota: true
+      maxOverQuota: 0.5  # Can exceed quota by 50% when GPUs idle
+      preemptWhenOverQuota: true  # Preempt over-quota workloads if needed
+  
+  # Resource limits
+  limits:
+    # Maximum GPU per single workload
+    maxGPUPerWorkload: 1.0
+    
+    # Maximum concurrent workloads
+    maxWorkloads: 10
+    
+    # GPU memory limits
+    maxGPUMemoryPerWorkload: "16Gi"
+
+---
+# Department-level policy (if using multi-tenancy)
+apiVersion: run.ai/v1
+kind: DepartmentPolicy
+metadata:
+  name: ml-team-policy
+spec:
+  # Department quota
+  gpuQuota: 4.0
+  
+  # Projects in this department
+  projects:
+    - llm-inference
+    - computer-vision
+    - data-processing
+  
+  # Inter-project fairness
+  interProjectFairness:
+    # Equal sharing between projects by default
+    defaultShare: equal
+    
+    # Allow projects to use idle GPU from other projects
+    allowBorrowing: true
+    
+    # Preempt borrowed resources when project needs them
+    preemptBorrowed: true
+

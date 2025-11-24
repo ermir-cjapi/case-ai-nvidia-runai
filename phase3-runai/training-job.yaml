@@ -1,0 +1,69 @@
+# Example: Run:AI Training Job with Preemption
+# Shows how training jobs can preempt inference workloads
+
+apiVersion: run.ai/v2alpha1
+kind: TrainingWorkload
+metadata:
+  name: llm-finetune
+  namespace: runai-llm-inference
+  labels:
+    runai/project: llm-inference
+spec:
+  # Training job gets higher priority
+  priority: high
+  
+  # GPU resources
+  gpu:
+    value: 0.5  # Request 0.5 GPU
+    memory: "8Gi"  # GPU memory limit
+  
+  # Can preempt lower-priority inference workloads
+  preemptible: false  # This job cannot be preempted
+  
+  # Compute resources
+  compute:
+    cpuRequest: "2"
+    cpuLimit: "4"
+    memoryRequest: "16Gi"
+    memoryLimit: "20Gi"
+  
+  # Container spec
+  image: llm-inference:phase2
+  command:
+    - python3
+    - -c
+    - |
+      import torch
+      import time
+      print("Starting fine-tuning job...")
+      print(f"GPU available: {torch.cuda.is_available()}")
+      if torch.cuda.is_available():
+          print(f"GPU: {torch.cuda.get_device_name(0)}")
+      
+      # Simulate training workload
+      for epoch in range(10):
+          print(f"Epoch {epoch+1}/10")
+          time.sleep(30)  # Simulate training
+      
+      print("Fine-tuning complete!")
+  
+  # Volume mounts
+  volumes:
+    - name: model-storage
+      persistentVolumeClaim:
+        claimName: llm-model-storage
+      volumeMounts:
+        - name: model-storage
+          mountPath: /app/model
+
+---
+# Alternative: Using runai CLI to submit job
+# 
+# runai submit finetune \
+#   --project llm-inference \
+#   --gpu 0.5 \
+#   --image llm-inference:phase2 \
+#   --priority high \
+#   --command "python3 train.py" \
+#   --pvc llm-model-storage:/app/model
+

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-inference-config
+  namespace: default
+data:
+  # Model configuration
+  MODEL_PATH: "/app/model"
+  MODEL_NAME: "llama-3.2-3b"
+  
+  # Generation parameters
+  MAX_TOKENS: "200"
+  TEMPERATURE: "0.7"
+  TOP_P: "0.9"
+  
+  # Server configuration
+  WORKERS: "1"
+  LOG_LEVEL: "info"
+
