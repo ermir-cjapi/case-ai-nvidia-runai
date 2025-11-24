@@ -1,0 +1,82 @@
+# Docker Compose Configuration for Phase 1: Bare Metal LLM Inference
+#
+# Quick Start:
+#   1. Ensure model is downloaded to ../model/ directory
+#   2. Run: docker-compose up -d
+#   3. Test: curl http://localhost:8000/health
+#   4. View logs: docker-compose logs -f
+#   5. Stop: docker-compose down
+#
+# Configuration:
+#   - Change port: HOST_PORT=8080 docker-compose up -d
+#   - Use specific GPU: CUDA_VISIBLE_DEVICES=1 docker-compose up -d
+#   - View GPU usage: docker-compose exec llm-inference nvidia-smi
+#
+# Requirements:
+#   - Docker 20.10+ with NVIDIA Container Runtime
+#   - NVIDIA GPU with 10GB+ VRAM
+#   - Model files in ../model/ directory
+
+version: '3.8'
+
+services:
+  llm-inference:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: llm-inference:phase1
+    container_name: llm-inference-phase1
+    
+    # GPU configuration - requires Docker with NVIDIA runtime
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1  # Change to "all" to use all GPUs
+              capabilities: [gpu]
+    
+    # Port mapping
+    # Format: "HOST_PORT:CONTAINER_PORT"
+    ports:
+      - "${HOST_PORT:-8000}:8000"
+    
+    # Volume mounts
+    volumes:
+      - ../model:/app/model:ro  # Mount model directory as read-only
+      # Optionally mount cache directory to speed up subsequent runs
+      # - ~/.cache/huggingface:/root/.cache/huggingface:rw
+    
+    # Environment variables
+    environment:
+      - MODEL_PATH=/app/model
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - PYTHONUNBUFFERED=1
+      # Optional: Hugging Face token for gated models
+      # - HF_TOKEN=${HF_TOKEN}
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Resource limits (optional - uncomment and adjust based on your system)
+    # mem_limit: 16g
+    # cpus: '4.0'
+    
+    # Network mode (optional - use host network for better performance)
+    # network_mode: "host"
+

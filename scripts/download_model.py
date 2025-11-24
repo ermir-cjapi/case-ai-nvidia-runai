@@ -6,13 +6,13 @@ Downloads LLM models from HuggingFace Hub for use in the tutorial.
 
 Usage:
     # Download Llama 3.2 3B (recommended)
-    python download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
+    python3 download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
 
     # Download Phi-3 Mini (alternative)
-    python download_model.py --model microsoft/Phi-3-mini-4k-instruct --output ./model
+    python3 download_model.py --model microsoft/Phi-3-mini-4k-instruct --output ./model
     
     # Download with HuggingFace token
-    python download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model --token YOUR_HF_TOKEN
+    python3 download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model --token YOUR_HF_TOKEN
 """
 
 import argparse
@@ -50,7 +50,7 @@ def download_model(model_id: str, output_dir: str, token: str = None):
         print("  3. Get token: https://huggingface.co/settings/tokens")
         print("  4. Re-run with: --token YOUR_TOKEN")
         print("\nAlternatively, use Phi-3 Mini (no token required):")
-        print("  python download_model.py --model microsoft/Phi-3-mini-4k-instruct --output ./model")
+        print("  python3 download_model.py --model microsoft/Phi-3-mini-4k-instruct --output ./model")
         sys.exit(1)
     
     try:
@@ -117,14 +117,14 @@ def main():
         epilog="""
 Examples:
   # Llama 3.2 3B (recommended, requires HF token)
-  python download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model --token hf_xxx
+  python3 download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model --token hf_xxx
   
   # Phi-3 Mini (alternative, no token required)
-  python download_model.py --model microsoft/Phi-3-mini-4k-instruct --output ./model
+  python3 download_model.py --model microsoft/Phi-3-mini-4k-instruct --output ./model
   
   # Use HF_TOKEN environment variable
   export HF_TOKEN=hf_xxx
-  python download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
+  python3 download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
         """
     )
     

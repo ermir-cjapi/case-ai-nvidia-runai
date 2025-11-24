@@ -7,7 +7,7 @@ You now have a comprehensive, production-ready tutorial for learning GPU-acceler
 ## 📂 Project Structure
 
 ```
-nvidia-runai-tutorial/
+case-ai-nvidia-runai/
 ├── README.md                    # Main documentation
 ├── QUICKSTART.md               # Fast 30-minute walkthrough
 ├── LICENSE                     # MIT License
@@ -143,7 +143,7 @@ nvidia-runai-tutorial/
 
 ### Phase 1 (5 minutes)
 ```bash
-python scripts/download_model.py --output ./model
+python3 scripts/download_model.py --output ./model
 cd phase1-bare-metal
 docker build -t llm-inference:phase1 .
 docker run --gpus all -p 8000:8000 -v ../model:/app/model llm-inference:phase1
@@ -179,25 +179,25 @@ kubectl apply -f runai-project.yaml -f inference-deployment.yaml
 
 ### GPU Check
 ```bash
-python scripts/gpu_check.py
+python3 scripts/gpu_check.py
 ```
 Validates GPU, CUDA, Docker, and kubectl setup.
 
 ### Model Download
 ```bash
-python scripts/download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
+python3 scripts/download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
 ```
 Downloads LLM from HuggingFace Hub.
 
 ### Load Testing
 ```bash
-python scripts/load_test.py --url http://localhost:8000/generate --concurrency 5 --requests 50
+python3 scripts/load_test.py --url http://localhost:8000/generate --concurrency 5 --requests 50
 ```
 Benchmarks inference performance.
 
 ### Run:AI Metrics
 ```bash
-python scripts/runai_metrics.py --project llm-inference --duration 300
+python3 scripts/runai_metrics.py --project llm-inference --duration 300
 ```
 Collects GPU utilization metrics over time.
 
@@ -300,7 +300,7 @@ MIT License - See [LICENSE](LICENSE) file
 For issues:
 1. Check phase-specific README files
 2. Review [docs/comparison.md](docs/comparison.md)
-3. Run `python scripts/gpu_check.py` to verify setup
+3. Run `python3 scripts/gpu_check.py` to verify setup
 4. Check logs: `docker logs` or `kubectl logs`
 
 ## 🎉 Congratulations!

@@ -12,6 +12,70 @@ This tutorial will teach you how to deploy LLM inference on NVIDIA GPUs with pro
 
 **Total time**: 2-3 days (can be done in stages)
 
+## Step 0: Clone This Repository
+
+### Option A: Using Personal Access Token (Recommended)
+
+GitHub no longer supports password authentication. Use a Personal Access Token (PAT) instead:
+
+1. Create a GitHub Personal Access Token:
+   - Go to: https://github.com/settings/tokens
+   - Click "Generate new token" → "Generate new token (classic)"
+   - Select scopes: `repo` (for private repos) or just `public_repo` (for public repos)
+   - Click "Generate token" and **copy the token**
+
+2. Clone the repository:
+
+```bash
+# Replace YOUR_USERNAME with your actual GitHub username
+git clone https://github.com/YOUR_USERNAME/case-ai-nvidia-runai.git
+# When prompted:
+# Username: your-github-username
+# Password: paste-your-personal-access-token-here
+```
+
+3. (Optional) Save credentials to avoid re-entering:
+
+```bash
+git config --global credential.helper store
+```
+
+### Option B: Using SSH (Best for frequent Git users)
+
+1. Generate SSH key (if you don't have one):
+
+```bash
+ssh-keygen -t ed25519 -C "your_email@example.com"
+# Press Enter to accept defaults
+```
+
+2. Add SSH key to GitHub:
+
+```bash
+# Copy your public key
+cat ~/.ssh/id_ed25519.pub
+# Go to https://github.com/settings/keys
+# Click "New SSH key" and paste the key
+```
+
+3. Clone using SSH:
+
+```bash
+# Replace YOUR_USERNAME with your actual GitHub username
+git clone git@github.com:YOUR_USERNAME/case-ai-nvidia-runai.git
+```
+
+### Option C: Download as ZIP (No Git required)
+
+If you just want to run the tutorial without Git:
+
+```bash
+# Download and extract (replace YOUR_USERNAME with your GitHub username)
+wget https://github.com/YOUR_USERNAME/case-ai-nvidia-runai/archive/refs/heads/main.zip
+unzip main.zip
+cd case-ai-nvidia-runai-main
+```
+
 ## Prerequisites
 
 ### Required Hardware
@@ -34,10 +98,10 @@ This tutorial will teach you how to deploy LLM inference on NVIDIA GPUs with pro
 
 ```bash
 # Navigate to tutorial directory
-cd nvidia-runai-tutorial
+cd case-ai-nvidia-runai
 
 # Run environment check
-python scripts/gpu_check.py
+python3 scripts/gpu_check.py
 ```
 
 **Expected output**:
@@ -84,7 +148,7 @@ We recommend **Llama 3.2 3B** (3 billion parameters, ~7GB VRAM).
 
 ```bash
 export HF_TOKEN=hf_your_token_here
-python scripts/download_model.py \
+python3 scripts/download_model.py \
   --model meta-llama/Llama-3.2-3B-Instruct \
   --output ./model
 ```
@@ -92,7 +156,7 @@ python scripts/download_model.py \
 ### For Phi-3 Mini (no token):
 
 ```bash
-python scripts/download_model.py \
+python3 scripts/download_model.py \
   --model microsoft/Phi-3-mini-4k-instruct \
   --output ./model
 ```
@@ -103,11 +167,23 @@ python scripts/download_model.py \
 
 Once the model is downloaded, you're ready!
 
+**Option A: Using Docker Compose (Recommended)**
+
 ```bash
 # Read Phase 1 guide
 cat phase1-bare-metal/README.md
 
 # Or jump right in
+cd phase1-bare-metal
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+```
+
+**Option B: Using Docker CLI**
+
+```bash
 cd phase1-bare-metal
 docker build -t llm-inference:phase1 .
 docker run --gpus all -p 8000:8000 \
@@ -115,7 +191,7 @@ docker run --gpus all -p 8000:8000 \
   llm-inference:phase1
 ```
 
-**In another terminal, test it**:
+**Test the service**:
 
 ```bash
 curl -X POST http://localhost:8000/generate \
@@ -141,7 +217,7 @@ curl -X POST http://localhost:8000/generate \
 ## Step 5: Benchmark Phase 1
 
 ```bash
-python scripts/load_test.py \
+python3 scripts/load_test.py \
   --url http://localhost:8000/generate \
   --concurrency 5 \
   --requests 50
@@ -183,7 +259,7 @@ cat phase3-runai/README.md
 ### File Organization
 
 ```
-nvidia-runai-tutorial/
+case-ai-nvidia-runai/
 ├── README.md              ← Start here for overview
 ├── QUICKSTART.md          ← 30-minute fast track
 ├── GETTING_STARTED.md     ← You are here!
@@ -206,13 +282,13 @@ nvidia-runai-tutorial/
 
 ```bash
 # Environment check
-python scripts/gpu_check.py
+python3 scripts/gpu_check.py
 
 # Download model
-python scripts/download_model.py --output ./model
+python3 scripts/download_model.py --output ./model
 
 # Load test
-python scripts/load_test.py --url http://localhost:8000/generate
+python3 scripts/load_test.py --url http://localhost:8000/generate
 
 # GPU monitoring (on NVIDIA server)
 watch -n 1 nvidia-smi
@@ -225,6 +301,11 @@ runai list
 ```
 
 ## Troubleshooting
+
+### "Password authentication not supported" (Git)
+**Solution**: GitHub requires Personal Access Token or SSH key.
+- See detailed guide: [docs/git-authentication.md](docs/git-authentication.md)
+- Quick fix: Use PAT instead of password: https://github.com/settings/tokens
 
 ### "CUDA out of memory"
 **Solution**: Your GPU has less than 10GB VRAM.
@@ -284,8 +365,8 @@ runai list
 
 ## Next Steps
 
-1. ✅ Verify environment: `python scripts/gpu_check.py`
-2. ✅ Download model: `python scripts/download_model.py`
+1. ✅ Verify environment: `python3 scripts/gpu_check.py`
+2. ✅ Download model: `python3 scripts/download_model.py`
 3. ✅ Start Phase 1: `cd phase1-bare-metal && cat README.md`
 4. ✅ Benchmark each phase
 5. ✅ Compare results in `docs/comparison.md`
@@ -308,6 +389,6 @@ This tutorial represents real-world production scenarios. Completing it will giv
 **Ready? Let's go!**
 
 ```bash
-python scripts/gpu_check.py
+python3 scripts/gpu_check.py
 ```
 

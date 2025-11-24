@@ -33,18 +33,35 @@ ls -lh ../model/
 
 ## 🚀 Quick Start
 
-### Step 1: Build Docker Image
+### Option A: Docker Compose (Recommended)
 
 ```bash
 cd phase1-bare-metal
-docker build -t llm-inference:phase1 .
+
+# Start the service
+docker-compose up --build
+
+# Or run in detached mode
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f
+
+# Stop the service
+docker-compose down
 ```
 
 **Build time**: ~5-10 minutes (downloads PyTorch, Transformers, etc.)
+**Startup time**: ~30-60 seconds (model loading to GPU)
 
-### Step 2: Run Inference Server
+### Option B: Docker CLI
 
 ```bash
+cd phase1-bare-metal
+
+# Build image
+docker build -t llm-inference:phase1 .
+
 # Run with GPU and model mounted
 docker run --rm --gpus all \
   -p 8000:8000 \
@@ -60,6 +77,52 @@ INFO: Loading model from /app/model
 INFO: GPU: NVIDIA A100-SXM4-40GB
 INFO: Model loaded successfully!
 INFO: Application startup complete.
+```
+
+### Docker Compose Commands Reference
+
+```bash
+# Start service (foreground)
+docker-compose up
+
+# Start service (background/detached)
+docker-compose up -d
+
+# Build and start
+docker-compose up --build
+
+# View container status
+docker-compose ps
+
+# View logs (follow mode)
+docker-compose logs -f
+
+# View logs for specific service
+docker-compose logs -f llm-inference
+
+# Execute command in running container
+docker-compose exec llm-inference nvidia-smi
+
+# Restart service
+docker-compose restart
+
+# Stop service (containers remain)
+docker-compose stop
+
+# Start stopped service
+docker-compose start
+
+# Stop and remove containers
+docker-compose down
+
+# Stop, remove containers, and remove volumes
+docker-compose down -v
+
+# Rebuild without using cache
+docker-compose build --no-cache
+
+# Pull latest images
+docker-compose pull
 ```
 
 ### Step 3: Test Inference
@@ -107,7 +170,7 @@ watch -n 1 nvidia-smi
 
 ```bash
 cd ..
-python scripts/load_test.py \
+python3 scripts/load_test.py \
   --url http://localhost:8000/generate \
   --concurrency 5 \
   --requests 50
@@ -203,7 +266,7 @@ Average the GPU utilization column. You'll likely see:
 Send requests as fast as possible:
 
 ```bash
-python scripts/load_test.py --concurrency 10 --requests 100
+python3 scripts/load_test.py --concurrency 10 --requests 100
 ```
 
 **Question**: Does throughput increase? Why or why not?
@@ -223,18 +286,81 @@ Try different concurrency levels:
 
 ```bash
 # Test 1: Sequential (concurrency=1)
-python scripts/load_test.py --concurrency 1 --requests 20
+python3 scripts/load_test.py --concurrency 1 --requests 20
 
 # Test 2: Moderate (concurrency=5)
-python scripts/load_test.py --concurrency 5 --requests 20
+python3 scripts/load_test.py --concurrency 5 --requests 20
 
 # Test 3: High (concurrency=10)
-python scripts/load_test.py --concurrency 10 --requests 20
+python3 scripts/load_test.py --concurrency 10 --requests 20
 ```
 
 **Question**: How does latency change with concurrency? Why?
 
+## ⚙️ Docker Compose Configuration
+
+The `docker-compose.yml` file supports environment variables for easy customization.
+
+### Custom Port
+
+```bash
+# Use a different port
+HOST_PORT=8080 docker-compose up -d
+```
+
+### Multiple GPUs
+
+Edit `docker-compose.yml` and change:
+```yaml
+count: 1  # Change to "all" to use all GPUs
+```
+
+Or specify GPU by ID:
+```bash
+CUDA_VISIBLE_DEVICES=1 docker-compose up -d
+```
+
+### Resource Limits
+
+Uncomment in `docker-compose.yml`:
+```yaml
+mem_limit: 16g
+cpus: '4.0'
+```
+
+### Host Network Mode
+
+For better networking performance, uncomment:
+```yaml
+network_mode: "host"
+```
+
+**Note**: When using host network mode, port mapping is ignored and the service listens on port 8000 directly.
+
 ## 🛠️ Troubleshooting
+
+### Docker Compose Issues
+
+**Problem**: `ERROR: could not find an available, non-overlapping IPv4 address pool`
+
+**Solution**:
+```bash
+docker network prune
+docker-compose down
+docker-compose up -d
+```
+
+**Problem**: `Error response from daemon: could not select device driver "" with capabilities: [[gpu]]`
+
+**Solution**: Install NVIDIA Container Toolkit:
+```bash
+# Ubuntu/Debian
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+sudo systemctl restart docker
+```
 
 ### "CUDA out of memory" Error
 
@@ -267,6 +393,12 @@ docker logs <container_id> | grep GPU
 ```
 
 ## 📚 Additional Resources
+
+### Documentation
+
+- **[Docker Compose Guide](DOCKER_COMPOSE.md)** - Comprehensive Docker Compose usage guide
+- **[Main README](../README.md)** - Project overview and all phases
+- **[Quick Start](../QUICKSTART.md)** - Fast-track guide for all phases
 
 ### API Endpoints
 

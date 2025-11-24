@@ -6,7 +6,7 @@ This script checks your NVIDIA GPU setup and verifies all requirements
 for running the LLM inference tutorial.
 
 Usage:
-    python gpu_check.py
+    python3 gpu_check.py
 """
 
 import subprocess
@@ -57,9 +57,10 @@ def check_gpu_details() -> Dict:
     """Get GPU details using nvidia-smi"""
     print(f"\n{Colors.BOLD}[2/7] Checking GPU details...{Colors.END}")
     
+    # Query GPU details (without cuda_version which is not a valid field)
     success, output = run_command([
         'nvidia-smi',
-        '--query-gpu=name,memory.total,driver_version,cuda_version',
+        '--query-gpu=name,memory.total,driver_version',
         '--format=csv,noheader'
     ])
     
@@ -67,17 +68,25 @@ def check_gpu_details() -> Dict:
         print(f"{Colors.RED}✗ Could not query GPU details{Colors.END}")
         return {}
     
-    # Parse output (format: "GPU Name, 24576 MiB, 535.129.03, 12.2")
+    # Parse output (format: "GPU Name, 24576 MiB, 535.129.03")
     parts = output.split(',')
-    if len(parts) >= 4:
+    if len(parts) >= 3:
         gpu_name = parts[0].strip()
         memory_str = parts[1].strip()
         driver_version = parts[2].strip()
-        cuda_version = parts[3].strip()
         
         # Extract memory in MB
         memory_mb = int(memory_str.split()[0])
         memory_gb = memory_mb / 1024
+        
+        # Get CUDA version separately from nvidia-smi output
+        cuda_version = "N/A"
+        cuda_success, cuda_output = run_command(['nvidia-smi'])
+        if cuda_success:
+            import re
+            cuda_match = re.search(r'CUDA Version:\s+(\d+\.\d+)', cuda_output)
+            if cuda_match:
+                cuda_version = cuda_match.group(1)
         
         print(f"{Colors.GREEN}✓ GPU detected{Colors.END}")
         print(f"  Name: {Colors.BLUE}{gpu_name}{Colors.END}")
@@ -250,7 +259,7 @@ def print_summary(results: Dict[str, bool], gpu_info: Dict):
     
     print(f"\n{Colors.BOLD}Next Steps:{Colors.END}")
     if phase1_ready:
-        print(f"  1. Download model: python scripts/download_model.py")
+        print(f"  1. Download model: python3 scripts/download_model.py")
         print(f"  2. Start Phase 1: cd phase1-bare-metal && docker build -t llm-inference:phase1 .")
     else:
         print(f"  1. Fix missing requirements above")

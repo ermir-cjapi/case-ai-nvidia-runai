@@ -2,12 +2,34 @@
 
 Get up and running with the tutorial in 30 minutes or less!
 
+## Step 0: Clone Repository
+
+⚠️ **GitHub Authentication Note**: Password authentication is not supported. Use one of these methods:
+
+```bash
+# Method 1: HTTPS with Personal Access Token (replace YOUR_USERNAME with your GitHub username)
+git clone https://github.com/YOUR_USERNAME/case-ai-nvidia-runai.git
+# Use your PAT (not password) when prompted: https://github.com/settings/tokens
+
+# Method 2: SSH (replace YOUR_USERNAME with your GitHub username)
+git clone git@github.com:YOUR_USERNAME/case-ai-nvidia-runai.git
+
+# Method 3: Download ZIP (no Git) - replace YOUR_USERNAME with your GitHub username
+wget https://github.com/YOUR_USERNAME/case-ai-nvidia-runai/archive/refs/heads/main.zip && unzip main.zip
+```
+
+Then navigate to the directory:
+
+```bash
+cd case-ai-nvidia-runai
+```
+
 ## Prerequisites Check
 
 Run this command to verify your environment:
 
 ```bash
-python scripts/gpu_check.py
+python3 scripts/gpu_check.py
 ```
 
 Expected output:
@@ -23,14 +45,21 @@ Expected output:
 ```bash
 # For Llama 3.2 3B (requires HuggingFace token)
 export HF_TOKEN=your_token_here
-python scripts/download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
+python3 scripts/download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
 
 # OR use Phi-3 Mini (no token required)
-python scripts/download_model.py --model microsoft/Phi-3-mini-4k-instruct --output ./model
+python3 scripts/download_model.py --model microsoft/Phi-3-mini-4k-instruct --output ./model
 ```
 
 ### Step 2: Run Inference Server
 
+**Option A: Docker Compose (Easiest)**
+```bash
+cd phase1-bare-metal
+docker-compose up -d
+```
+
+**Option B: Docker CLI**
 ```bash
 cd phase1-bare-metal
 docker build -t llm-inference:phase1 .
@@ -48,7 +77,7 @@ curl -X POST http://localhost:8000/generate \
 ### Step 4: Benchmark
 
 ```bash
-python scripts/load_test.py --url http://localhost:8000/generate --concurrency 5 --requests 50
+python3 scripts/load_test.py --url http://localhost:8000/generate --concurrency 5 --requests 50
 ```
 
 **Record these metrics** for comparison!
@@ -138,7 +167,7 @@ curl -X POST http://$NODE_IP:30081/generate \
 ### Step 5: Load Test
 
 ```bash
-python ../scripts/load_test.py --url http://$NODE_IP:30081/generate --concurrency 15 --requests 150
+python3 ../scripts/load_test.py --url http://$NODE_IP:30081/generate --concurrency 15 --requests 150
 ```
 
 **Expected: 3x throughput vs Phase 2!**

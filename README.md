@@ -25,7 +25,7 @@ By completing this tutorial, you will understand:
 ## 📁 Project Structure
 
 ```
-nvidia-runai-tutorial/
+case-ai-nvidia-runai/
 ├── phase1-bare-metal/          # Direct GPU inference
 │   ├── app.py                  # FastAPI inference server
 │   ├── model_loader.py         # GPU model loading
@@ -83,32 +83,73 @@ nvidia-smi
 
 ## 🏃 Quick Start
 
+### Step 0: Clone This Repository
+
+**Important**: GitHub requires a Personal Access Token (PAT), not your password.
+
+**Option A - Using Personal Access Token**:
+
+```bash
+# 1. Create token at: https://github.com/settings/tokens
+# 2. Clone the repo (replace YOUR_USERNAME with your GitHub username)
+git clone https://github.com/YOUR_USERNAME/case-ai-nvidia-runai.git
+# Enter your username and use the PAT as password
+```
+
+**Option B - Using SSH**:
+
+```bash
+# 1. Add SSH key to GitHub: https://github.com/settings/keys
+# 2. Clone using SSH (replace YOUR_USERNAME with your GitHub username)
+git clone git@github.com:YOUR_USERNAME/case-ai-nvidia-runai.git
+```
+
+**Option C - Download ZIP** (no Git needed):
+
+```bash
+# Replace YOUR_USERNAME with your GitHub username
+wget https://github.com/YOUR_USERNAME/case-ai-nvidia-runai/archive/refs/heads/main.zip
+unzip main.zip && cd case-ai-nvidia-runai-main
+```
+
 ### Step 1: Verify GPU
 
 ```bash
-cd nvidia-runai-tutorial
-python scripts/gpu_check.py
+cd case-ai-nvidia-runai  # or case-ai-nvidia-runai-main if downloaded as ZIP
+python3 scripts/gpu_check.py
 ```
 
 ### Step 2: Download Model
 
 ```bash
 # Requires HuggingFace token (https://huggingface.co/settings/tokens)
-python scripts/download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
+python3 scripts/download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
 ```
 
 ### Step 3: Phase 1 - Bare Metal Inference
 
+**Option A: Docker Compose (Recommended)**
 ```bash
 cd phase1-bare-metal
 
-# Build Docker image
-docker build -t llm-inference:phase1 .
-
-# Run inference server
-docker run --gpus all -p 8000:8000 -v ../model:/app/model llm-inference:phase1
+# Start service
+docker-compose up -d
 
 # Test inference
+curl -X POST http://localhost:8000/generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Suggest a skincare routine for dry skin", "max_tokens": 200}'
+```
+
+**Option B: Docker CLI**
+```bash
+cd phase1-bare-metal
+
+# Build and run
+docker build -t llm-inference:phase1 .
+docker run --gpus all -p 8000:8000 -v $(pwd)/../model:/app/model llm-inference:phase1
+
+# Test inference (in another terminal)
 curl -X POST http://localhost:8000/generate \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Suggest a skincare routine for dry skin", "max_tokens": 200}'
@@ -117,7 +158,7 @@ curl -X POST http://localhost:8000/generate \
 ### Step 4: Benchmark Phase 1
 
 ```bash
-python scripts/load_test.py --url http://localhost:8000/generate --concurrency 5
+python3 scripts/load_test.py --url http://localhost:8000/generate --concurrency 5
 ```
 
 ### Step 5: Phase 2 - Kubernetes

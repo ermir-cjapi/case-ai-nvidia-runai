@@ -21,7 +21,7 @@ echo "[1/3] Benchmarking Phase 1 (Bare Metal)..."
 echo "  URL: http://localhost:8000/generate"
 
 if curl -s -f http://localhost:8000/health > /dev/null 2>&1; then
-    python scripts/load_test.py \
+    python3 scripts/load_test.py \
         --url http://localhost:8000/generate \
         --concurrency $CONCURRENCY \
         --requests $REQUESTS \
@@ -44,7 +44,7 @@ if [ -n "$NODE_IP" ]; then
     echo "  URL: $PHASE2_URL"
     
     if curl -s -f "http://${NODE_IP}:30080/health" > /dev/null 2>&1; then
-        python scripts/load_test.py \
+        python3 scripts/load_test.py \
             --url "$PHASE2_URL" \
             --concurrency $CONCURRENCY \
             --requests $REQUESTS \
@@ -68,7 +68,7 @@ if [ -n "$NODE_IP" ]; then
     echo "  URL: $PHASE3_URL"
     
     if curl -s -f "http://${NODE_IP}:30081/health" > /dev/null 2>&1; then
-        python scripts/load_test.py \
+        python3 scripts/load_test.py \
             --url "$PHASE3_URL" \
             --concurrency 15 \  # Higher concurrency for 3 pods
             --requests 150 \

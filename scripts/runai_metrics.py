@@ -5,7 +5,7 @@ Run:AI Metrics Collection Script
 Collects and analyzes Run:AI workload metrics for comparison.
 
 Usage:
-    python runai_metrics.py --project llm-inference --duration 300
+    python3 runai_metrics.py --project llm-inference --duration 300
 """
 
 import argparse

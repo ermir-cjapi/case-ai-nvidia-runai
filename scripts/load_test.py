@@ -5,7 +5,7 @@ Load Testing Script for LLM Inference API
 Generates concurrent requests to measure throughput, latency, and GPU utilization.
 
 Usage:
-    python load_test.py --url http://localhost:8000/generate --concurrency 5 --requests 50
+    python3 load_test.py --url http://localhost:8000/generate --concurrency 5 --requests 50
 """
 
 import argparse

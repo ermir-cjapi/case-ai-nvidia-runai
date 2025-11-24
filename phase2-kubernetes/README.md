@@ -192,7 +192,7 @@ curl -X POST http://$NODE_IP:30080/generate \
 
 ```bash
 # Run load test against K8s service
-python ../scripts/load_test.py \
+python3 ../scripts/load_test.py \
   --url http://$NODE_IP:30080/generate \
   --concurrency 5 \
   --requests 50

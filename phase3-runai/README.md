@@ -187,7 +187,7 @@ kubectl get svc -n runai-llm-inference llm-inference-runai
 NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
 
 # Run load test (higher concurrency now possible!)
-python ../scripts/load_test.py \
+python3 ../scripts/load_test.py \
   --url http://$NODE_IP:30081/generate \
   --concurrency 15 \  # 5 requests per pod
   --requests 150
