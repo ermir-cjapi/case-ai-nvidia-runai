@@ -1,14 +1,24 @@
 # Phase 2: Kubernetes with NVIDIA GPU Operator
 
-This phase deploys the LLM inference service to Kubernetes with GPU scheduling. You'll learn about K8s GPU resource management and discover its limitations for GPU sharing.
+Deploy the LLM inference service to Kubernetes with GPU scheduling. You'll discover that traditional K8s doesn't solve the GPU idle time problem!
+
+> **📚 Prerequisites**: Complete [Phase 1](../phase1-bare-metal/README.md) first to understand baseline GPU performance.
+
+## ⏱️ Quick Overview
+
+| 🎯 Goal | ⏱️ Time | 📊 Difficulty |
+|---------|---------|---------------|
+| Deploy to K8s, try to scale, discover limitations | 1-2 hours | ⭐⭐⭐ Medium |
+
+**What you'll discover**: Kubernetes treats GPUs as indivisible! You still can't share one GPU between multiple pods. 😞
 
 ## 🎯 Learning Objectives
 
-- Deploy GPU workloads to Kubernetes
-- Understand NVIDIA Device Plugin and GPU Operator
-- Experience K8s GPU scheduling constraints
-- Identify why 1 GPU = 1 pod is inefficient
-- Measure GPU utilization with multiple pods (spoiler: still low!)
+- ✅ Deploy GPU workloads to Kubernetes
+- ✅ Understand NVIDIA Device Plugin and GPU Operator
+- ✅ Experience K8s GPU scheduling constraints (1 GPU = 1 pod)
+- ✅ Try to scale and see pods stuck in "Pending"
+- ✅ Measure GPU utilization (spoiler: still only 15-20%!)
 
 ## 📋 Prerequisites
 

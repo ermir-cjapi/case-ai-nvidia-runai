@@ -30,10 +30,18 @@ class ModelLoader:
         logger.info(f"Target device: {self.device}")
         
         # Load tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_path,
-            trust_remote_code=True
-        )
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_path,
+                trust_remote_code=True,
+                local_files_only=True
+            )
+        except Exception as e:
+            logger.error(f"Failed to load tokenizer: {e}")
+            logger.error("This usually means the model files are corrupted or incomplete.")
+            logger.error(f"Please check that {model_path} contains valid model files.")
+            logger.error("Try re-downloading the model with: python3 scripts/download_model.py")
+            raise
         
         # Set padding token if not set
         if self.tokenizer.pad_token is None:

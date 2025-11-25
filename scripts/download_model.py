@@ -26,7 +26,7 @@ def download_model(model_id: str, output_dir: str, token: str = None):
     
     try:
         from huggingface_hub import snapshot_download
-        from transformers import AutoTokenizer, AutoModelForCausalLM
+        from transformers import AutoTokenizer
     except ImportError:
         print("Error: Required packages not installed")
         print("\nInstall with:")
@@ -88,7 +88,14 @@ def download_model(model_id: str, output_dir: str, token: str = None):
         )
         print(f"✓ Model config verified")
         print(f"  Architecture: {config.model_type}")
-        print(f"  Parameters: ~{config.num_parameters // 1_000_000_000}B")
+        
+        # Try to display parameter count if available
+        if hasattr(config, 'num_parameters'):
+            print(f"  Parameters: ~{config.num_parameters // 1_000_000_000}B")
+        elif hasattr(config, 'hidden_size') and hasattr(config, 'num_hidden_layers'):
+            # Rough estimate for transformer models
+            params_estimate = config.hidden_size * config.num_hidden_layers * 12 * config.hidden_size / 1_000_000_000
+            print(f"  Parameters: ~{params_estimate:.1f}B (estimated)")
         
         print("\n[3/3] Model ready for use!")
         print(f"\nNext steps:")

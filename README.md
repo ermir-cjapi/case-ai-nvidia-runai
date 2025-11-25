@@ -126,40 +126,40 @@ python3 scripts/gpu_check.py
 python3 scripts/download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
 ```
 
-### Step 3: Phase 1 - Bare Metal Inference
+### Step 3: Run Phase 1 - Bare Metal Inference
 
-**Option A: Docker Compose (Recommended)**
+Navigate to Phase 1 and start the inference server:
+
 ```bash
 cd phase1-bare-metal
 
-# Start service
+# Start the service (easiest method)
 docker-compose up -d
 
-# Test inference
+# View logs to confirm it's running
+docker-compose logs -f
+```
+
+Wait for the model to load (~30-60 seconds), then test it:
+
+```bash
+# Test the inference API
 curl -X POST http://localhost:8000/generate \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Suggest a skincare routine for dry skin", "max_tokens": 200}'
 ```
 
-**Option B: Docker CLI**
-```bash
-cd phase1-bare-metal
-
-# Build and run
-docker build -t llm-inference:phase1 .
-docker run --gpus all -p 8000:8000 -v $(pwd)/../model:/app/model llm-inference:phase1
-
-# Test inference (in another terminal)
-curl -X POST http://localhost:8000/generate \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Suggest a skincare routine for dry skin", "max_tokens": 200}'
-```
-
-### Step 4: Benchmark Phase 1
+### Step 4: Benchmark Phase 1 Performance
 
 ```bash
-python3 scripts/load_test.py --url http://localhost:8000/generate --concurrency 5
+# Go back to project root
+cd ..
+
+# Run load test
+python3 scripts/load_test.py --url http://localhost:8000/generate --concurrency 5 --requests 50
 ```
+
+**📝 Record your metrics** - you'll compare them in Phase 2 and 3!
 
 ### Step 5: Phase 2 - Kubernetes
 

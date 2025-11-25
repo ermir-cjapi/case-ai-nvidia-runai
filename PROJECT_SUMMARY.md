@@ -54,22 +54,33 @@ case-ai-nvidia-runai/
 
 ## 🎯 Learning Path
 
-### Phase 1: Bare Metal GPU Inference (~3-4 hours)
+### Phase 1: Bare Metal GPU Inference (~30 minutes - 1 hour)
 **What you learn:**
 - Load LLM models to GPU using PyTorch
 - GPU memory management (model weights + KV cache)
 - Direct CUDA usage for optimal performance
 - Baseline performance measurement
+- **The GPU idle time problem** (visualized)
+
+**Quick start:**
+```bash
+cd phase1-bare-metal
+docker-compose up -d
+curl -X POST http://localhost:8000/generate -d '{"prompt":"Test", "max_tokens":150}'
+python3 ../scripts/load_test.py --url http://localhost:8000/generate --concurrency 5
+```
 
 **Key files:**
 - `phase1-bare-metal/app.py` - FastAPI server with `/generate` endpoint
 - `phase1-bare-metal/model_loader.py` - GPU model loading logic
 - `phase1-bare-metal/Dockerfile` - NVIDIA CUDA 12.2 image
+- `phase1-bare-metal/docker-compose.yml` - Easy deployment
 
 **Expected results:**
-- Latency: ~800ms
-- Throughput: 60 req/min
-- GPU utilization: **18%** (idle 82% of time!)
+- Latency: ~800ms (good!)
+- Throughput: 60 req/min (limited by GPU idle time)
+- GPU utilization: **18%** (idle 82% of time! ⚠️)
+- **Key insight**: GPU is wasted most of the time!
 
 ### Phase 2: Kubernetes Deployment (~4-5 hours)
 **What you learn:**

@@ -38,12 +38,12 @@ Expected output:
 - ✅ Docker found
 - ✅ NVIDIA Container Toolkit working
 
-## 5-Minute Phase 1 (Bare Metal)
+## Phase 1: Bare Metal (10 minutes)
 
-### Step 1: Download Model
+### Step 1: Download Model (~10 minutes)
 
 ```bash
-# For Llama 3.2 3B (requires HuggingFace token)
+# For Llama 3.2 3B (requires HuggingFace token from https://huggingface.co/settings/tokens)
 export HF_TOKEN=your_token_here
 python3 scripts/download_model.py --model meta-llama/Llama-3.2-3B-Instruct --output ./model
 
@@ -51,36 +51,52 @@ python3 scripts/download_model.py --model meta-llama/Llama-3.2-3B-Instruct --out
 python3 scripts/download_model.py --model microsoft/Phi-3-mini-4k-instruct --output ./model
 ```
 
-### Step 2: Run Inference Server
+⏱️ **Wait for download to complete** - you'll see "Model ready for use!"
 
-**Option A: Docker Compose (Easiest)**
+### Step 2: Start Inference Server
+
 ```bash
 cd phase1-bare-metal
+
+# Start the service
 docker-compose up -d
+
+# Watch logs until you see "Application startup complete"
+docker-compose logs -f
 ```
 
-**Option B: Docker CLI**
-```bash
-cd phase1-bare-metal
-docker build -t llm-inference:phase1 .
-docker run --gpus all -p 8000:8000 -v $(pwd)/../model:/app/model llm-inference:phase1
-```
+⏱️ **Wait 30-60 seconds** for model to load to GPU.
 
-### Step 3: Test
+### Step 3: Test It Works
 
 ```bash
+# Quick health check
+curl http://localhost:8000/
+
+# Test text generation
 curl -X POST http://localhost:8000/generate \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Suggest a skincare routine", "max_tokens": 100}'
+  -d '{"prompt": "Suggest a skincare routine for dry skin", "max_tokens": 150}'
 ```
 
-### Step 4: Benchmark
+✅ **Success!** You should see generated text in the response.
+
+### Step 4: Benchmark Performance
 
 ```bash
+# Go back to project root
+cd ..
+
+# Run load test
 python3 scripts/load_test.py --url http://localhost:8000/generate --concurrency 5 --requests 50
 ```
 
-**Record these metrics** for comparison!
+**📝 Write down your metrics!** You'll compare:
+- GPU Utilization: ~15-25% ⚠️ (this is the problem!)
+- Throughput: ~60-90 req/min
+- Latency (p50): ~700-1000ms
+
+**Phase 1 Complete!** The GPU works great but is idle 75-85% of the time.
 
 ## 20-Minute Phase 2 (Kubernetes)
 

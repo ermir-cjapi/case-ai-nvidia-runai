@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional, AsyncIterator
+from contextlib import asynccontextmanager
 import torch
 from model_loader import ModelLoader
 import logging
@@ -22,15 +23,48 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Global model loader (initialized on startup)
+model_loader: Optional[ModelLoader] = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler for startup and shutdown"""
+    global model_loader
+    
+    # Startup
+    logger.info("Starting LLM Inference Server...")
+    logger.info(f"CUDA available: {torch.cuda.is_available()}")
+    
+    if torch.cuda.is_available():
+        logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
+        logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+    else:
+        logger.warning("No GPU detected! This will be very slow.")
+    
+    try:
+        model_loader = ModelLoader(model_path="/app/model")
+        logger.info("Model loaded successfully!")
+    except Exception as e:
+        logger.error(f"Failed to load model: {e}")
+        raise
+    
+    yield
+    
+    # Shutdown
+    if model_loader:
+        del model_loader
+        torch.cuda.empty_cache()
+    logger.info("Server shutdown complete")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="LLM Inference API",
     description="GPU-accelerated text generation with Llama 3.2 3B",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
-
-# Global model loader (initialized on startup)
-model_loader: Optional[ModelLoader] = None
 
 
 class GenerateRequest(BaseModel):
@@ -50,39 +84,6 @@ class GenerateResponse(BaseModel):
     inference_time_ms: float
     gpu_name: str
     gpu_memory_used_gb: float
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize model on startup"""
-    global model_loader
-    
-    logger.info("Starting LLM Inference Server...")
-    logger.info(f"CUDA available: {torch.cuda.is_available()}")
-    
-    if torch.cuda.is_available():
-        logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
-        logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
-    else:
-        logger.warning("No GPU detected! This will be very slow.")
-    
-    # Load model
-    try:
-        model_loader = ModelLoader(model_path="/app/model")
-        logger.info("Model loaded successfully!")
-    except Exception as e:
-        logger.error(f"Failed to load model: {e}")
-        raise
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    global model_loader
-    if model_loader:
-        del model_loader
-        torch.cuda.empty_cache()
-    logger.info("Server shutdown complete")
 
 
 @app.get("/")

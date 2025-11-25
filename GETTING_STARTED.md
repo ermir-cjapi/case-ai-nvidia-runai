@@ -163,37 +163,42 @@ python3 scripts/download_model.py \
 
 **Download time**: 10-15 minutes depending on connection speed.
 
-## Step 4: Start with Phase 1
+## Step 4: Start Phase 1 - Bare Metal Inference
 
-Once the model is downloaded, you're ready!
+Once the model is downloaded, you're ready to run your first LLM inference!
 
-**Option A: Using Docker Compose (Recommended)**
+### Quick Start (Recommended)
 
 ```bash
-# Read Phase 1 guide
-cat phase1-bare-metal/README.md
-
-# Or jump right in
 cd phase1-bare-metal
+
+# Start the inference server
 docker-compose up -d
 
-# View logs
+# Watch the logs
 docker-compose logs -f
 ```
 
-**Option B: Using Docker CLI**
-
-```bash
-cd phase1-bare-metal
-docker build -t llm-inference:phase1 .
-docker run --gpus all -p 8000:8000 \
-  -v $(pwd)/../model:/app/model \
-  llm-inference:phase1
+**What to look for in the logs:**
+```
+INFO: Loading model from /app/model
+INFO: GPU: NVIDIA [Your GPU Name]
+INFO: Model loaded successfully!
+INFO: Application startup complete.
+INFO: Uvicorn running on http://0.0.0.0:8000
 ```
 
-**Test the service**:
+⏱️ **Startup time**: 30-60 seconds for model to load to GPU.
+
+### Test That It Works
+
+Open a new terminal and try this:
 
 ```bash
+# Quick health check
+curl http://localhost:8000/
+
+# Test text generation
 curl -X POST http://localhost:8000/generate \
   -H "Content-Type: application/json" \
   -d '{
@@ -203,30 +208,43 @@ curl -X POST http://localhost:8000/generate \
   }'
 ```
 
-**Expected response** (example):
+**Expected response:**
 ```json
 {
-  "generated_text": "For dry skin, I recommend starting with a gentle...",
+  "generated_text": "For dry skin, I recommend starting with a gentle cleanser...",
   "tokens_generated": 142,
-  "inference_time_ms": 823,
+  "inference_time_ms": 823.4,
   "gpu_name": "NVIDIA A100-SXM4-40GB",
   "gpu_memory_used_gb": 6.8
 }
 ```
 
-## Step 5: Benchmark Phase 1
+🎉 **Success!** Your LLM is running on GPU!
+
+## Step 5: Measure Performance
+
+Now let's see how well it performs:
 
 ```bash
+# Go back to project root
+cd ..
+
+# Run performance benchmark
 python3 scripts/load_test.py \
   --url http://localhost:8000/generate \
   --concurrency 5 \
   --requests 50
 ```
 
-**Record these metrics** for comparison:
-- GPU Utilization: ___% (likely ~18%)
-- Throughput: ___ req/min (likely ~60)
-- Latency (p50): ___ms (likely ~800ms)
+**📝 Record Your Metrics:**
+
+| Metric | Your Value | Expected |
+|--------|------------|----------|
+| GPU Utilization (avg) | ____% | ~15-25% |
+| Throughput | ____ req/min | ~60-90 |
+| Latency (p50) | ____ms | ~700-1000 |
+
+**⚠️ Notice**: GPU utilization is only 15-25%! The GPU is idle 75-85% of the time. This is what we'll improve in Phase 3.
 
 ## Step 6: Continue to Phase 2
 
