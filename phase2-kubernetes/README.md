@@ -12,403 +12,308 @@ Deploy the LLM inference service to Kubernetes with GPU scheduling. You'll disco
 
 **What you'll discover**: Kubernetes treats GPUs as indivisible! You still can't share one GPU between multiple pods. 😞
 
+---
+
+## 📖 Documentation
+
+**🌟 START HERE**: [SETUP_GUIDE_CLEAN.md](SETUP_GUIDE_CLEAN.md)
+
+This comprehensive guide explains:
+- ✅ Kubernetes concepts (PVC, Jobs, Deployments, Services)
+- ✅ Complete step-by-step deployment
+- ✅ What each manifest file does
+- ✅ How everything connects together
+- ✅ The GPU sharing limitation
+
+---
+
 ## 🎯 Learning Objectives
 
 - ✅ Deploy GPU workloads to Kubernetes
 - ✅ Understand NVIDIA Device Plugin and GPU Operator
+- ✅ Use Kubernetes storage (PVC) for model files
 - ✅ Experience K8s GPU scheduling constraints (1 GPU = 1 pod)
 - ✅ Try to scale and see pods stuck in "Pending"
 - ✅ Measure GPU utilization (spoiler: still only 15-20%!)
 
-## 📋 Prerequisites
+---
 
-Before starting, ensure you have:
-
-1. ✅ Kubernetes cluster (K3s, minikube, or full cluster)
-2. ✅ kubectl configured and working
-3. ✅ NVIDIA GPU node(s) in your cluster
-4. ✅ Phase 1 completed (understanding baseline)
-
-### Verify Prerequisites
+## 🚀 Quick Start (TL;DR)
 
 ```bash
-# Check kubectl access
-kubectl cluster-info
+cd ~/case-ai-nvidia-runai/phase2-kubernetes
 
-# Check nodes
-kubectl get nodes
+# 1. Stop Phase 1
+cd ../phase1-bare-metal && docker-compose down && cd ../phase2-kubernetes
 
-# Check if GPU operator is installed (we'll install if not)
-kubectl get pods -n gpu-operator
-```
+# 2. Install GPU Operator
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
+helm install gpu-operator nvidia/gpu-operator -n gpu-operator --create-namespace --set driver.enabled=false
 
-## 🚀 Installation Steps
+# 3. Create storage
+kubectl apply -f k8s/pvc.yaml
 
-### Step 1: Install NVIDIA GPU Operator
+# 4. Create HF token secret
+kubectl create secret generic huggingface-token --from-literal=token=hf_YOUR_TOKEN
 
-The GPU Operator automates GPU setup in Kubernetes.
+# 5. Download model (takes ~10-15 min)
+kubectl apply -f k8s/init-job.yaml
+kubectl logs -f job/llm-model-download  # Watch progress
 
-```bash
-# Add NVIDIA Helm repo
-helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
-helm repo update
-
-# Install GPU Operator
-helm install --wait --generate-name \
-  -n gpu-operator --create-namespace \
-  nvidia/gpu-operator \
-  --set driver.enabled=false  # Set to true if driver not pre-installed
-```
-
-**Wait for operator pods to be ready** (~5 minutes):
-
-```bash
-kubectl get pods -n gpu-operator -w
-```
-
-### Step 2: Verify GPU Detection
-
-```bash
-# Check GPU node capacity
-kubectl get nodes -o json | jq '.items[].status.capacity | select(.["nvidia.com/gpu"] != null)'
-```
-
-Expected output:
-```json
-{
-  "nvidia.com/gpu": "1"  # or "2", "4", etc.
-}
-```
-
-### Step 3: Create PersistentVolumeClaim
-
-```bash
-cd phase2-kubernetes
-
-# Create PVC for model storage
-kubectl apply -f pvc.yaml
-
-# Verify PVC
-kubectl get pvc llm-model-storage
-```
-
-### Step 4: Download Model to PVC
-
-**Option A: Using Init Job (Recommended)**
-
-```bash
-# If using Llama 3.2 3B, create HF token secret first
-kubectl create secret generic huggingface-token \
-  --from-literal=token=hf_your_token_here
-
-# Or for Phi-3 Mini (no token needed), use:
-# Edit init-job.yaml and change MODEL_ID to microsoft/Phi-3-mini-4k-instruct
-
-# Run download job
-kubectl apply -f init-job.yaml
-
-# Watch progress
-kubectl logs -f job/llm-model-download
-```
-
-**Wait for completion** (~10-15 minutes for download).
-
-```bash
-# Verify job completed
-kubectl get jobs
-# NAME                  COMPLETIONS   DURATION   AGE
-# llm-model-download    1/1           8m32s      10m
-```
-
-**Option B: Copy Model from Local**
-
-If you already have the model from Phase 1:
-
-```bash
-# Create a pod to access PVC
-kubectl run -it --rm model-copy --image=busybox --restart=Never \
-  --overrides='{"spec":{"containers":[{"name":"model-copy","image":"busybox","command":["sleep","3600"],"volumeMounts":[{"name":"model","mountPath":"/model"}]}],"volumes":[{"name":"model","persistentVolumeClaim":{"claimName":"llm-model-storage"}}]}}'
-
-# In another terminal, copy model
-kubectl cp ../model/. model-copy:/model/
-```
-
-### Step 5: Apply ConfigMap
-
-```bash
-kubectl apply -f configmap.yaml
-```
-
-### Step 6: Build and Deploy Inference Service
-
-```bash
-# Build Docker image
+# 6. Build Docker image (IMPORTANT!)
 docker build -t llm-inference:phase2 .
 
-# If using remote cluster, push to registry
-# docker tag llm-inference:phase2 your-registry/llm-inference:phase2
-# docker push your-registry/llm-inference:phase2
-# Then update deployment.yaml with full image path
+# Verify image exists
+docker images | grep llm-inference
 
-# Deploy
-kubectl apply -f deployment.yaml
+# 7. Deploy application
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
 
-# Watch pod creation
-kubectl get pods -l app=llm-inference -w
-```
-
-**Wait for pod to be ready** (~2-3 minutes for model loading):
-
-```bash
-kubectl wait --for=condition=ready pod -l app=llm-inference --timeout=300s
-```
-
-### Step 7: Expose Service
-
-```bash
-kubectl apply -f service.yaml
-
-# Get NodePort
-kubectl get svc llm-inference
-```
-
-Example output:
-```
-NAME            TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
-llm-inference   NodePort   10.43.123.45    <none>        8000:30080/TCP   1m
-```
-
-### Step 8: Test Deployment
-
-```bash
-# Get node IP
+# 8. Test
 NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+curl http://$NODE_IP:30080/
+```
 
-# Test inference
+**For detailed explanations of each step, see [SETUP_GUIDE_CLEAN.md](SETUP_GUIDE_CLEAN.md)**
+
+---
+
+## 📁 Files in This Directory
+
+### Documentation:
+| File | Purpose |
+|------|---------|
+| **SETUP_GUIDE_CLEAN.md** | 🌟 Complete walkthrough with explanations |
+| **README.md** | This file - quick reference |
+
+### Application Code:
+| File | Purpose |
+|------|---------|
+| **Dockerfile** | Container image definition |
+| **app.py** | Inference server code (imports from Phase 1) |
+| **model_loader.py** | Model loading code (imports from Phase 1) |
+| **requirements.txt** | Python dependencies |
+
+### Kubernetes Manifests (k8s/):
+| File | Purpose |
+|------|---------|
+| **pvc.yaml** | Creates 20GB storage for model files |
+| **init-job.yaml** | One-time job to download model from HuggingFace |
+| **configmap.yaml** | Configuration settings |
+| **deployment.yaml** | Main inference application |
+| **service.yaml** | Exposes API on NodePort 30080 |
+| **hpa.yaml** | Horizontal Pod Autoscaler (advanced, optional) |
+
+---
+
+## 🔍 What Each Manifest Does
+
+### k8s/pvc.yaml - Persistent Storage
+Creates 20GB of storage in Kubernetes for model files. Think of it as a virtual hard drive.
+
+```bash
+kubectl apply -f k8s/pvc.yaml
+kubectl get pvc  # Should show "Bound"
+```
+
+### k8s/init-job.yaml - Model Download
+A one-time job that downloads the model from HuggingFace and saves it to the PVC.
+
+```bash
+kubectl apply -f k8s/init-job.yaml
+kubectl logs -f job/llm-model-download  # Watch download
+```
+
+### k8s/deployment.yaml - Inference Application
+Runs your inference pods. Mounts the PVC to access model files. Requests 1 GPU.
+
+```bash
+kubectl apply -f k8s/deployment.yaml
+kubectl get pods  # Should show "Running"
+```
+
+### k8s/service.yaml - Network Access
+Exposes your application on port 30080 so you can access it.
+
+```bash
+kubectl apply -f k8s/service.yaml
+kubectl get svc  # Shows NodePort
+```
+
+---
+
+## 🧪 Testing
+
+### Health Check
+```bash
+NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+curl http://$NODE_IP:30080/
+```
+
+### Inference Test
+```bash
 curl -X POST http://$NODE_IP:30080/generate \
   -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Suggest a skincare routine for dry skin",
-    "max_tokens": 150,
-    "temperature": 0.7
-  }'
+  -d '{"prompt": "Suggest a skincare routine for dry skin", "max_tokens": 150}'
 ```
 
-**Expected**: Similar response to Phase 1 (latency +50-100ms due to K8s networking).
-
-## 📊 Performance Testing
-
-### Test 1: Single Pod Performance
-
+### Load Test
 ```bash
-# Run load test against K8s service
-python3 ../scripts/load_test.py \
-  --url http://$NODE_IP:30080/generate \
-  --concurrency 5 \
-  --requests 50
+cd ..
+source venv/bin/activate
+python3 scripts/load_test.py --url http://$NODE_IP:30080/generate --concurrency 5 --requests 50
 ```
 
-**Record metrics** for comparison.
+---
 
-### Test 2: Monitor GPU Utilization
+## 🔬 Demonstrating the GPU Limitation
 
-In a separate terminal:
-
-```bash
-# Exec into pod and monitor GPU
-POD_NAME=$(kubectl get pods -l app=llm-inference -o jsonpath='{.items[0].metadata.name}')
-
-kubectl exec -it $POD_NAME -- watch -n 1 nvidia-smi
-```
-
-**Observe**: GPU utilization still ~15-25% average (idle between requests).
-
-### Test 3: Attempt to Scale
+### Try to Scale (This Will Fail!)
 
 ```bash
-# Try to scale to 2 replicas
+# Try to create 2 pods
 kubectl scale deployment llm-inference --replicas=2
 
 # Watch what happens
-kubectl get pods -l app=llm-inference -w
+kubectl get pods
+
+# Output:
+# llm-inference-xxx-1   1/1     Running
+# llm-inference-xxx-2   0/1     Pending   ← Stuck! Can't get GPU
+
+# See why
+kubectl describe pod llm-inference-xxx-2 | grep -A 5 "Events:"
+
+# You'll see:
+# Warning  FailedScheduling  Insufficient nvidia.com/gpu
 ```
 
-**What you'll see**:
+**This is the key lesson**: Kubernetes can't share 1 GPU between 2 pods!
 
-If you have **1 GPU**:
-- ✅ First pod: Running
-- ❌ Second pod: **Pending** (insufficient nvidia.com/gpu)
-
+### Scale Back
 ```bash
-kubectl describe pod <pending-pod-name>
-# Events: 0/1 nodes are available: 1 Insufficient nvidia.com/gpu
+kubectl scale deployment llm-inference --replicas=1
 ```
 
-**Key insight**: Can't run 2 pods if each requests 1 full GPU!
+---
 
-If you have **2 GPUs**:
-- ✅ Both pods running
-- But: Each GPU still idle 75-85% of the time
-- **Double the waste!**
+## 📊 Expected Results
 
-## 🔍 Analysis
+| Metric | Phase 1 (Docker) | Phase 2 (K8s) | Change |
+|--------|------------------|---------------|--------|
+| Throughput (req/min) | ~73 | ~60-70 | ~Same |
+| Latency p50 (ms) | ~4133 | ~4200 | Slightly higher |
+| GPU Utilization (avg) | ~18% | ~15-20% | **No improvement!** |
+| Pods per GPU | 1 | 1 | **No improvement!** |
+| Complexity | Low | High | Increased |
 
-### Problem 1: GPU Fragmentation
+**Key Insight**: Adding Kubernetes orchestration doesn't solve the GPU efficiency problem!
 
-**Scenario**: You have 1 GPU and want to run 3 inference pods.
-
-**K8s behavior**:
-- Each pod requests `nvidia.com/gpu: 1` (full GPU)
-- K8s can only schedule 1 pod per GPU
-- Pods 2 and 3: **Pending forever**
-
-**Why**: Kubernetes treats GPUs as discrete, non-divisible resources.
-
-### Problem 2: GPU Still Underutilized
-
-Even with successful deployment:
-
-| Metric | Phase 1 | Phase 2 | Change |
-|--------|---------|---------|--------|
-| **GPU Utilization** | 15-25% | 10-20% | ❌ **Worse!** |
-| **Latency (p50)** | ~800ms | ~850ms | +50ms (K8s overhead) |
-| **Throughput** | 60 req/min | 60 req/min | No improvement |
-| **Pods per GPU** | 1 | 1 | No change |
-
-**Conclusion**: Kubernetes doesn't solve the GPU idle problem!
-
-### Problem 3: HPA Doesn't Help
-
-Try applying HPA:
-
-```bash
-kubectl apply -f hpa.yaml
-
-# Watch HPA
-kubectl get hpa -w
-```
-
-**Issue**: HPA scales based on CPU/memory, but bottleneck is GPU availability.
-- CPU/memory at 50%? HPA wants to scale up.
-- No free GPUs? New pod stays **Pending**.
-
-## 📝 Exercises
-
-### Exercise 1: GPU Resource Limits
-
-Try removing GPU limit:
-
-```yaml
-resources:
-  requests:
-    nvidia.com/gpu: 1
-  # No limits
-```
-
-**Question**: Does this allow multiple pods per GPU? Why or why not?
-
-### Exercise 2: Measure Networking Overhead
-
-Compare Phase 1 vs Phase 2 latency:
-
-```bash
-# Phase 1 (local Docker)
-curl http://localhost:8000/generate ...
-
-# Phase 2 (K8s NodePort)
-curl http://$NODE_IP:30080/generate ...
-```
-
-**Question**: How much latency does K8s networking add?
-
-### Exercise 3: Pod Affinity
-
-Try forcing 2 pods on same node (if you have 2 GPUs on one node):
-
-Edit deployment.yaml, add:
-
-```yaml
-affinity:
-  podAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-    - labelSelector:
-        matchLabels:
-          app: llm-inference
-      topologyKey: kubernetes.io/hostname
-```
-
-**Question**: Do both pods get scheduled? What's the total GPU utilization?
+---
 
 ## 🛠️ Troubleshooting
 
-### Pod Stuck in "Pending"
-
+### Pod Stuck in Pending
 ```bash
 kubectl describe pod <pod-name>
+
+# Common issues:
+# 1. GPU Operator not ready: kubectl get pods -n gpu-operator
+# 2. PVC not bound: kubectl get pvc
+# 3. Model not downloaded: kubectl logs job/llm-model-download
 ```
 
-**Common causes**:
-1. **Insufficient nvidia.com/gpu**: Not enough GPUs
-2. **Node taints**: GPU nodes have taints, add tolerations
-3. **Node selector mismatch**: Adjust nodeSelector in deployment
+### Init-Job Failed
+```bash
+kubectl logs job/llm-model-download
 
-### "CUDA out of memory" in Pod
+# Common issues:
+# 1. Invalid HF token
+# 2. Network timeout
+# 3. Insufficient PVC space
 
-**Solution**: Reduce `resources.requests.memory` or use smaller model.
+# Fix and retry:
+kubectl delete job llm-model-download
+kubectl apply -f init-job.yaml
+```
 
-### Model Not Found
+### GPU Out of Memory
+```bash
+# Check what's using GPU
+nvidia-smi
+
+# Stop Phase 1 or NIM
+docker-compose down  # or docker stop <nim-container>
+
+# Delete and recreate pod
+kubectl delete pod <pod-name>
+```
+
+### Can't Access NodePort
+```bash
+# Check service
+kubectl get svc llm-inference
+
+# Check pod is running
+kubectl get pods
+
+# Check logs
+kubectl logs <pod-name>
+
+# Try with localhost if on same machine
+curl http://localhost:30080/
+```
+
+---
+
+## 🧹 Cleanup
 
 ```bash
-# Check PVC contents
-kubectl run -it --rm debug --image=busybox --restart=Never \
-  --overrides='{"spec":{"containers":[{"name":"debug","image":"busybox","command":["ls","-la","/model"],"volumeMounts":[{"name":"model","mountPath":"/model"}]}],"volumes":[{"name":"model","persistentVolumeClaim":{"claimName":"llm-model-storage"}}]}}'
+# Delete all resources
+kubectl delete -f k8s/service.yaml
+kubectl delete -f k8s/deployment.yaml
+kubectl delete -f k8s/configmap.yaml
+kubectl delete job llm-model-download
+kubectl delete -f k8s/pvc.yaml
+kubectl delete secret huggingface-token
+
+# Verify
+kubectl get all
 ```
 
-### GPU Operator Pods Failing
-
-```bash
-kubectl get pods -n gpu-operator
-kubectl logs -n gpu-operator <failing-pod>
-```
-
-**Common fix**: Ensure NVIDIA drivers installed on nodes.
-
-## 📊 Key Metrics to Record
-
-| Metric | Value | Notes |
-|--------|-------|-------|
-| **Pods Running** | ___ | Max possible on your GPUs |
-| **GPU Utilization (avg)** | ___% | Still low! |
-| **Latency (p50)** | ___ms | vs Phase 1 |
-| **Throughput** | ___ req/min | Same as Phase 1? |
-| **Pending Pods** | ___ | Due to GPU limits |
+---
 
 ## ✅ Phase 2 Complete!
 
-You should now understand:
-- ✅ How to deploy GPU workloads to Kubernetes
-- ✅ NVIDIA GPU Operator functionality
-- ✅ **K8s GPU limitation: 1 pod = 1 GPU** (no sharing!)
-- ✅ HPA doesn't solve GPU underutilization
-- ✅ Kubernetes adds overhead without improving GPU efficiency
+You now understand:
+- ✅ Kubernetes deployment patterns
+- ✅ GPU scheduling in K8s
+- ✅ Persistent storage (PVC)
+- ✅ Init-Jobs for setup tasks
+- ❌ **The limitation**: K8s can't share GPUs between pods!
+- ❌ **The problem**: GPU utilization is still low (~15-20%)
 
-### Key Takeaway
+**Key Takeaway**: Orchestration alone doesn't solve GPU efficiency!
 
-**Kubernetes doesn't solve the GPU idle problem!**
+---
 
-You still have:
-- 75-85% GPU idle time
-- Can't run multiple inference pods per GPU
-- GPU fragmentation (pending pods)
-- Same throughput as Phase 1, but with K8s complexity
+## 🚀 Next: Phase 3
 
-## Next Steps
+**Phase 3 (Run:AI)** will solve the GPU sharing problem:
+- ✅ Run **3 pods on 1 GPU**
+- ✅ Achieve **~220 req/min** (3x throughput)
+- ✅ Get **60-75% GPU utilization**
+- ✅ Save **67% on GPU costs**
 
-Continue to **[Phase 3: Run:AI](../phase3-runai/README.md)** to:
-- Enable GPU fractions (0.3-0.5 GPU per pod)
-- Run 3 pods on 1 GPU with time-slicing
-- Achieve 60-80% GPU utilization (vs 15-25% now!)
-- See **3x throughput improvement** on same hardware!
+Continue to [Phase 3](../phase3-runai/README.md)
 
-**This is where the magic happens!** 🚀
+---
+
+## 📚 Additional Resources
+
+- [Kubernetes GPU Docs](https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/)
+- [NVIDIA GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/)
+- [K8s Storage Concepts](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 
