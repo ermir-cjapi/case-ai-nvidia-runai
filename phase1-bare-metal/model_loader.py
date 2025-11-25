@@ -6,7 +6,6 @@ Handles loading Llama 3.2 3B or Phi-3 Mini to GPU with optimizations.
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
-from typing import Optional
 import logging
 import json
 from pathlib import Path
@@ -31,13 +30,15 @@ class ModelLoader:
         logger.info(f"Loading model from {model_path}")
         logger.info(f"Target device: {self.device}")
         
-        # Validate config file first
+        # Validate and pre-load config to avoid transformers bug
         self._validate_config()
+        config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
         
-        # Load tokenizer
+        # Load tokenizer with explicit config
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(
                 model_path,
+                config=config,
                 trust_remote_code=True,
                 use_fast=True
             )
@@ -56,6 +57,7 @@ class ModelLoader:
         logger.info("Loading model to GPU...")
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path,
+            config=config,
             torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
             device_map="auto" if self.device == "cuda" else None,
             trust_remote_code=True,
