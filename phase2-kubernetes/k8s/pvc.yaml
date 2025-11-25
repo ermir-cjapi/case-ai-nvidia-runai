@@ -4,8 +4,9 @@ metadata:
   name: llm-model-storage
   namespace: default
 spec:
+  storageClassName: local-path 
   accessModes:
-    - ReadWriteMany  # Multiple pods can read the same model
+    - ReadWriteOnce
   resources:
     requests:
       storage: 20Gi  # Enough for Llama 3.2 3B (~8GB) with headroom
