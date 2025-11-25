@@ -59,16 +59,23 @@ class ModelLoader:
         
         # Load model with optimizations
         logger.info("Loading model to GPU...")
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-            device_map="auto" if self.device == "cuda" else None,
-            trust_remote_code=True,
-            low_cpu_mem_usage=True,
-        )
-        
-        # Move to device if not using device_map
-        if device != "auto":
+        if self.device == "cuda":
+            # Force model to GPU (don't let accelerate offload to CPU)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.float16,
+                device_map="cuda:0",  # Force all layers to GPU 0
+                trust_remote_code=True,
+                low_cpu_mem_usage=True,
+            )
+        else:
+            # CPU mode
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.float32,
+                trust_remote_code=True,
+                low_cpu_mem_usage=True,
+            )
             self.model = self.model.to(self.device)
         
         # Set to evaluation mode
