@@ -9,7 +9,6 @@ spec:
   resources:
     requests:
       storage: 20Gi  # Enough for Llama 3.2 3B (~8GB) with headroom
-  storageClassName: standard  # Adjust based on your cluster
   
 ---
 # Alternative: Using hostPath for single-node clusters (K3s, minikube)
