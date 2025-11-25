@@ -2,7 +2,7 @@
 
 # Core ML frameworks
 torch>=2.1.0
-transformers>=4.36.0
+transformers>=4.44.0
 accelerate>=0.25.0
 
 # API framework

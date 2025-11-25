@@ -30,17 +30,16 @@ class ModelLoader:
         logger.info(f"Loading model from {model_path}")
         logger.info(f"Target device: {self.device}")
         
-        # Validate and pre-load config to avoid transformers bug
+        # Validate config
         self._validate_config()
-        config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
         
-        # Load tokenizer with explicit config
+        # Load tokenizer without config parameter (avoid transformers bug)
         try:
+            # Workaround: use legacy=False to avoid the buggy code path
             self.tokenizer = AutoTokenizer.from_pretrained(
                 model_path,
-                config=config,
                 trust_remote_code=True,
-                use_fast=True
+                legacy=False
             )
         except Exception as e:
             logger.error(f"Failed to load tokenizer: {e}")
@@ -57,7 +56,6 @@ class ModelLoader:
         logger.info("Loading model to GPU...")
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path,
-            config=config,
             torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
             device_map="auto" if self.device == "cuda" else None,
             trust_remote_code=True,
