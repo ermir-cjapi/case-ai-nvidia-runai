@@ -5,7 +5,7 @@ Handles loading Llama 3.2 3B or Phi-3 Mini to GPU with optimizations.
 """
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizerFast
 import logging
 import json
 from pathlib import Path
@@ -30,17 +30,22 @@ class ModelLoader:
         logger.info(f"Loading model from {model_path}")
         logger.info(f"Target device: {self.device}")
         
-        # Validate config
-        self._validate_config()
-        
-        # Load tokenizer without config parameter (avoid transformers bug)
-        try:
-            # Workaround: use legacy=False to avoid the buggy code path
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                model_path,
-                trust_remote_code=True,
-                legacy=False
-            )
+        # Load tokenizer - use specific tokenizer class to avoid AutoTokenizer bug
+        try:            
+            # Try to load as LlamaTokenizerFast first (for Llama 3.2)
+            try:
+                self.tokenizer = LlamaTokenizerFast.from_pretrained(
+                    model_path,
+                    legacy=False
+                )
+                logger.info("Loaded LlamaTokenizerFast")
+            except Exception as e:
+                logger.warning(f"Failed to load LlamaTokenizerFast: {e}")
+                # Fallback to AutoTokenizer
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    model_path,
+                    trust_remote_code=True
+                )
         except Exception as e:
             logger.error(f"Failed to load tokenizer: {e}")
             logger.error("This usually means the model files are corrupted or incomplete.")
@@ -73,29 +78,6 @@ class ModelLoader:
         self._log_model_info()
         
         logger.info("Model loaded successfully!")
-    
-    def _validate_config(self):
-        """Validate config.json exists and is properly formatted"""
-        config_path = Path(self.model_path) / "config.json"
-        
-        if not config_path.exists():
-            raise FileNotFoundError(f"config.json not found in {self.model_path}")
-        
-        try:
-            with open(config_path, 'r') as f:
-                config_data = json.load(f)
-            
-            # Ensure it's a dict with model_type
-            if not isinstance(config_data, dict):
-                raise ValueError(f"config.json should be a JSON object, got {type(config_data)}")
-            
-            if 'model_type' not in config_data:
-                raise ValueError("config.json is missing 'model_type' field")
-            
-            logger.info(f"Config validated: model_type={config_data.get('model_type')}")
-            
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in config.json: {e}")
     
     def _get_device(self, device: str) -> str:
         """Determine device to use"""
