@@ -17,10 +17,6 @@ spec:
         app: llm-inference
         phase: phase2
     spec:
-      # Node selector for GPU nodes (optional)
-      nodeSelector:
-        accelerator: nvidia-gpu  # Adjust based on your node labels
-      
       # Tolerations for GPU taints (if applicable)
       tolerations:
       - key: nvidia.com/gpu
