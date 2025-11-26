@@ -28,6 +28,13 @@ spec:
             model_id = os.getenv('MODEL_ID', 'meta-llama/Llama-3.2-3B-Instruct')
             token = os.getenv('HF_TOKEN', None)
             
+            # Debug: Check if token exists
+            if token:
+                print(f'Token found: {token[:7]}...{token[-4:]} (length: {len(token)})')
+            else:
+                print('WARNING: No HF_TOKEN environment variable found!')
+                print('Available env vars:', [k for k in os.environ.keys() if 'HF' in k or 'TOKEN' in k])
+            
             print(f'Downloading {model_id}...')
             snapshot_download(
                 repo_id=model_id,
@@ -50,7 +57,7 @@ spec:
             secretKeyRef:
               name: huggingface-token
               key: token
-              optional: true  # Set to false if token is required
+              optional: false  # Fail if token is missing
         volumeMounts:
         - name: model-storage
           mountPath: /model
@@ -59,16 +66,3 @@ spec:
         persistentVolumeClaim:
           claimName: llm-model-storage
   backoffLimit: 3
-
----
-# HuggingFace Token Secret (create this first if using Llama models)
-# kubectl create secret generic huggingface-token --from-literal=token=hf_your_token_here
-apiVersion: v1
-kind: Secret
-metadata:
-  name: huggingface-token
-  namespace: default
-type: Opaque
-stringData:
-  token: ""  # Replace with your HuggingFace token or create via kubectl
-
