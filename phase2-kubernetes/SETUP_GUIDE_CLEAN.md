@@ -1,6 +1,41 @@
-# Phase 2: Kubernetes Setup - Clean Approach
+# Phase 2: Kubernetes Setup Guide
 
 ## 🎯 What We're Building
+
+Deploy the LLM inference service to Kubernetes with GPU scheduling and persistent storage.
+
+## 🚀 Quick Start
+
+```bash
+cd ~/case-ai-nvidia-runai/phase2-kubernetes
+
+# 1. Create storage (on /mnt/ai-models partition)
+kubectl apply -f k8s/pvc.yaml
+
+# 2. Create HuggingFace token secret
+kubectl create secret generic huggingface-token --from-literal=token=hf_YOUR_TOKEN
+
+# 3. Download model (takes 10-15 min)
+kubectl apply -f k8s/init-job.yaml
+kubectl logs -f job/llm-model-download
+
+# 4. Build and import Docker image to K3s
+docker build -t llm-inference:phase2 .
+docker save llm-inference:phase2 | sudo k3s ctr images import -
+
+# 5. Deploy application
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+
+# 6. Test
+kubectl get pods  # Wait for 1/1 Ready
+curl http://localhost:30080/
+```
+
+---
+
+## 📖 Detailed Explanation
 
 In Phase 2, we'll deploy the LLM entirely within Kubernetes using **Kubernetes-native storage and patterns**. Everything will be self-contained in Kubernetes.
 

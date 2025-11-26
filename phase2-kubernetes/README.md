@@ -43,40 +43,31 @@ This comprehensive guide explains:
 ```bash
 cd ~/case-ai-nvidia-runai/phase2-kubernetes
 
-# 1. Stop Phase 1
-cd ../phase1-bare-metal && docker-compose down && cd ../phase2-kubernetes
-
-# 2. Install GPU Operator
-helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
-helm install gpu-operator nvidia/gpu-operator -n gpu-operator --create-namespace --set driver.enabled=false
-
-# 3. Create storage
+# 1. Create storage
 kubectl apply -f k8s/pvc.yaml
 
-# 4. Create HF token secret
+# 2. Create HuggingFace token secret
 kubectl create secret generic huggingface-token --from-literal=token=hf_YOUR_TOKEN
 
-# 5. Download model (takes ~10-15 min)
+# 3. Download model (10-15 min)
 kubectl apply -f k8s/init-job.yaml
-kubectl logs -f job/llm-model-download  # Watch progress
+kubectl logs -f job/llm-model-download
 
-# 6. Build Docker image (IMPORTANT!)
+# 4. Build and import Docker image (IMPORTANT for K3s!)
 docker build -t llm-inference:phase2 .
+docker save llm-inference:phase2 | sudo k3s ctr images import -
 
-# Verify image exists
-docker images | grep llm-inference
-
-# 7. Deploy application
+# 5. Deploy application
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 
-# 8. Test
-NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
-curl http://$NODE_IP:30080/
+# 6. Test
+kubectl get pods  # Wait for 1/1 Ready
+curl http://localhost:30080/
 ```
 
-**For detailed explanations of each step, see [SETUP_GUIDE_CLEAN.md](SETUP_GUIDE_CLEAN.md)**
+**For detailed explanations, see [SETUP_GUIDE_CLEAN.md](SETUP_GUIDE_CLEAN.md)**
 
 ---
 
