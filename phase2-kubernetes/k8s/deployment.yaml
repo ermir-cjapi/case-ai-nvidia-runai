@@ -17,12 +17,9 @@ spec:
         app: llm-inference
         phase: phase2
     spec:
-      # Tolerations for GPU taints and disk pressure
+      # Tolerations for GPU taints (if applicable)
       tolerations:
       - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-      - key: node.kubernetes.io/disk-pressure
         operator: Exists
         effect: NoSchedule
       
