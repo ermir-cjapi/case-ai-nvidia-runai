@@ -1,5 +1,9 @@
 # Run:AI Inference Deployment with GPU Fractions
 # This enables running 3 pods on 1 GPU!
+#
+# OPEN-SOURCE RUN:AI COMPATIBLE
+# Works with self-hosted Run:AI (no license needed)
+# NVIDIA acquisition (Dec 2024) - completely free!
 
 apiVersion: apps/v1
 kind: Deployment

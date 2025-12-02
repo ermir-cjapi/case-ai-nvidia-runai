@@ -69,8 +69,11 @@ case-ai-nvidia-runai/
 - Docker with NVIDIA Container Toolkit
 - Kubernetes cluster (K3s, minikube, or full cluster)
 - kubectl configured
+- Helm 3.x (for Phase 3)
 - Python 3.10+
 - HuggingFace account (free)
+
+**Note for Phase 3**: Run:AI is now open-source (NVIDIA acquisition, Dec 2024) - no trial license needed!
 
 ### Verify GPU Setup
 
@@ -181,23 +184,29 @@ kubectl get svc llm-inference
 curl -X POST http://<node-ip>:<nodeport>/generate -d '{"prompt": "..."}'
 ```
 
-### Step 6: Phase 3 - Run:AI
+### Step 6: Phase 3 - Run:AI (Open-Source)
 
 ```bash
 cd phase3-runai
 
-# Install Run:AI operator (requires license/trial)
-# Follow: https://docs.run.ai/admin/runai-setup/installation/install-runai/
+# Install Run:AI operator (open-source - NO LICENSE NEEDED!)
+helm repo add runai https://run-ai-charts.storage.googleapis.com
+helm install runai-cluster runai/runai-cluster \
+  --namespace runai-system \
+  --create-namespace \
+  --set controlPlane.selfHosted=true
 
 # Create Run:AI project
-runai project create llm-inference --gpu-quota 1
+kubectl apply -f runai-project.yaml
 
-# Deploy with GPU fractions
+# Deploy with GPU fractions (3 pods on 1 GPU!)
 kubectl apply -f inference-deployment.yaml
 
-# Monitor Run:AI dashboard
-runai list jobs
+# Monitor workloads
+kubectl get pods -n runai-llm-inference
 ```
+
+**Note**: Run:AI was open-sourced by NVIDIA in December 2024 - no trial signup required!
 
 ## 📊 Expected Results
 

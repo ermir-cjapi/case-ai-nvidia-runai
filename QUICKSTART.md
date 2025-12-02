@@ -141,19 +141,26 @@ kubectl get pods  # 2 pods will be Pending!
 
 **This demonstrates the K8s GPU limitation!**
 
-## 30-Minute Phase 3 (Run:AI)
+## 30-Minute Phase 3 (Run:AI - Open Source)
 
-### Step 1: Install Run:AI
+### Step 1: Install Run:AI (No License Needed!)
+
+**Great news!** Run:AI is now open-source (NVIDIA acquisition, Dec 2024). No trial signup required!
 
 ```bash
-# Get license from https://www.run.ai/trial/
+# Add Run:AI Helm repo
 helm repo add runai https://run-ai-charts.storage.googleapis.com && helm repo update
-kubectl create namespace runai-system
-kubectl apply -f runai-license.yaml  # Your license file
 
-helm install runai runai/runai-cluster \
+# Install open-source Run:AI (self-hosted, no license!)
+helm install runai-cluster runai/runai-cluster \
   --namespace runai-system \
-  --set runai.clusterName=my-cluster
+  --create-namespace \
+  --set controlPlane.selfHosted=true \
+  --set cluster.uid=$(uuidgen) \
+  --set cluster.url=runai-cluster-runai-system
+
+# Wait for pods to be ready
+kubectl wait --for=condition=ready pod -l app=runai-scheduler -n runai-system --timeout=300s
 ```
 
 ### Step 2: Create Project
@@ -216,19 +223,27 @@ Fill in your results:
 
 ### Pods pending in Phase 3
 - Check Run:AI operator: `kubectl get pods -n runai-system`
-- Verify license: `kubectl get configmap -n runai-system`
+- Check scheduler logs: `kubectl logs -n runai-system -l app=runai-scheduler`
+- Verify project exists: `kubectl get projects.run.ai`
+
+### Run:AI installation fails
+- Ensure Kubernetes version ≥ 1.20
+- Ensure NVIDIA GPU Operator is installed (Phase 2)
+- Try clean reinstall: `helm uninstall runai-cluster -n runai-system`
 
 ## Next Steps
 
 - Read detailed guides in each phase's README.md
 - See [docs/comparison.md](docs/comparison.md) for full analysis
-- Join Run:AI community: https://community.run.ai/
+- Run:AI open-source docs: https://docs.run.ai/
+- GitHub repo: https://github.com/run-ai/docs
 
 ## Need Help?
 
 1. Check logs: `kubectl logs <pod-name>`
 2. GPU status: `kubectl exec <pod-name> -- nvidia-smi`
-3. Run:AI dashboard: https://app.run.ai
+3. Run:AI scheduler logs: `kubectl logs -n runai-system -l app=runai-scheduler`
+4. Open-source support: https://github.com/run-ai/docs/issues
 
 Happy learning! 🚀
 

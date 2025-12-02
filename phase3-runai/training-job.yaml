@@ -1,5 +1,8 @@
 # Example: Run:AI Training Job with Preemption
 # Shows how training jobs can preempt inference workloads
+#
+# OPEN-SOURCE RUN:AI COMPATIBLE
+# Demonstrates workload priorities and GPU sharing
 
 apiVersion: run.ai/v2alpha1
 kind: TrainingWorkload

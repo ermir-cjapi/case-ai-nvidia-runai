@@ -1,5 +1,8 @@
 # Run:AI Project Configuration
 # Creates a project with GPU quota allocation
+#
+# OPEN-SOURCE RUN:AI COMPATIBLE
+# Apply this after installing open-source Run:AI cluster
 
 apiVersion: run.ai/v1
 kind: Project

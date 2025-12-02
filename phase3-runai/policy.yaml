@@ -1,4 +1,8 @@
 # Run:AI Fairness and Priority Policies
+#
+# OPEN-SOURCE RUN:AI COMPATIBLE
+# Note: Some advanced features may require enterprise version
+# Core fairness and priority features work in open-source
 
 apiVersion: run.ai/v1
 kind: WorkloadPolicy

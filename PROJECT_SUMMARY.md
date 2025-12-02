@@ -106,11 +106,17 @@ python3 ../scripts/load_test.py --url http://localhost:8000/generate --concurren
 - Time-slicing and Multi-Process Service (MPS)
 - Workload prioritization and preemption
 - **3x throughput on same hardware!**
+- **Open-source GPU orchestration** (no license required!)
 
 **Key files:**
 - `phase3-runai/runai-project.yaml` - Project with 1 GPU quota
 - `phase3-runai/inference-deployment.yaml` - 3 pods sharing 1 GPU
 - `phase3-runai/policy.yaml` - Fairness policies
+
+**Installation Note:**
+- Run:AI was open-sourced by NVIDIA (Dec 2024)
+- No trial signup or license needed
+- Install via Helm with `--set controlPlane.selfHosted=true`
 
 **Expected results:**
 - Latency: ~920ms (+120ms GPU sharing)
@@ -171,7 +177,13 @@ kubectl apply -f configmap.yaml -f deployment.yaml -f service.yaml
 
 ### Phase 3 (30 minutes)
 ```bash
-helm install runai/runai-cluster
+# Open-source Run:AI - no license needed!
+helm repo add runai https://run-ai-charts.storage.googleapis.com
+helm install runai-cluster runai/runai-cluster \
+  --namespace runai-system \
+  --create-namespace \
+  --set controlPlane.selfHosted=true
+
 cd phase3-runai
 kubectl apply -f runai-project.yaml -f inference-deployment.yaml
 # Watch 3 pods start on 1 GPU!
@@ -255,6 +267,8 @@ Runs load tests on all three phases automatically.
 - 60-80% GPU utilization vs 15-20%
 
 **Result**: **67% cost savings** with acceptable latency trade-off!
+
+**Bonus**: Now open-source (NVIDIA acquisition, Dec 2024) - completely free to use!
 
 ## 🔧 System Requirements
 
