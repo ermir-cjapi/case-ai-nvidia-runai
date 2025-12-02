@@ -1,28 +1,28 @@
 # Run:AI Inference Deployment with GPU Fractions
 # This enables running 3 pods on 1 GPU!
 #
+# PHASE 3 - STANDALONE (No dependencies on Phase 2)
 # OPEN-SOURCE RUN:AI COMPATIBLE
 # Works with self-hosted Run:AI (no license needed)
-# NVIDIA acquisition (Dec 2024) - completely free!
 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: llm-inference-runai
-  namespace: runai-llm-inference  # Run:AI creates namespace per project
+  name: gpu-fraction-demo
+  namespace: runai-llm-inference
   labels:
-    app: llm-inference
+    app: gpu-fraction-demo
     phase: phase3
     runai/project: llm-inference
 spec:
   replicas: 3  # Run 3 pods on 1 GPU using fractions!
   selector:
     matchLabels:
-      app: llm-inference-runai
+      app: gpu-fraction-demo
   template:
     metadata:
       labels:
-        app: llm-inference-runai
+        app: gpu-fraction-demo
         phase: phase3
       annotations:
         # Run:AI GPU fraction annotation
@@ -32,8 +32,8 @@ spec:
       schedulerName: runai-scheduler  # Use Run:AI scheduler
       
       containers:
-      - name: inference
-        image: llm-inference:phase2  # Same image as Phase 2
+      - name: gpu-app
+        image: gpu-fraction-demo:phase3
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
@@ -43,59 +43,50 @@ spec:
         resources:
           requests:
             nvidia.com/gpu: 1  # Requests 1 GPU, but fraction annotation limits to 0.33
-            memory: "10Gi"
-            cpu: "2"
+            memory: "2Gi"
+            cpu: "1"
           limits:
             nvidia.com/gpu: 1  # Same as request
-            memory: "12Gi"
-            cpu: "3"
+            memory: "4Gi"
+            cpu: "2"
         
         env:
-        - name: MODEL_PATH
-          value: "/app/model"
+        - name: RUNAI_GPU_FRACTION
+          value: "0.33"
         - name: CUDA_VISIBLE_DEVICES
           value: "0"  # Run:AI handles GPU assignment
         - name: CUDA_MPS_PIPE_DIRECTORY
           value: "/tmp/nvidia-mps"  # Multi-Process Service for sharing
         
-        volumeMounts:
-        - name: model-storage
-          mountPath: /app/model
-          readOnly: true
-        
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 120
-          periodSeconds: 30
+          initialDelaySeconds: 30
+          periodSeconds: 10
         
         readinessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 90
-          periodSeconds: 10
-      
-      volumes:
-      - name: model-storage
-        persistentVolumeClaim:
-          claimName: llm-model-storage
+          initialDelaySeconds: 10
+          periodSeconds: 5
 
 ---
-# Service for Run:AI deployment
+# Service for GPU fraction demo
 apiVersion: v1
 kind: Service
 metadata:
-  name: llm-inference-runai
+  name: gpu-fraction-demo
   namespace: runai-llm-inference
 spec:
   type: NodePort
   selector:
-    app: llm-inference-runai
+    app: gpu-fraction-demo
   ports:
   - port: 8000
     targetPort: 8000
     nodePort: 30081
     protocol: TCP
+    name: http
 
