@@ -39,13 +39,14 @@ spec:
         - containerPort: 8000
           name: http
         
-        # Resource requests with Run:AI GPU fraction
+        # Resource requests - GPU fraction is set via annotation above
         resources:
           requests:
-            runai.ai/gpu-fraction: "0.33"  # 1/3 GPU per pod
+            nvidia.com/gpu: 1  # Requests 1 GPU, but fraction annotation limits to 0.33
             memory: "10Gi"
             cpu: "2"
           limits:
+            nvidia.com/gpu: 1  # Same as request
             memory: "12Gi"
             cpu: "3"
         
