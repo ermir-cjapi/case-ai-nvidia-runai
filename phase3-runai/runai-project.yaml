@@ -1,15 +1,21 @@
 # Run:AI Project Configuration
 # Creates a project with GPU quota allocation
 #
-# OPEN-SOURCE RUN:AI COMPATIBLE (v2 API)
+# OPEN-SOURCE RUN:AI COMPATIBLE (v1 API)
 # Apply this after installing open-source Run:AI cluster
 
-apiVersion: run.ai/v2
+apiVersion: run.ai/v1
 kind: Project
 metadata:
   name: llm-inference
 spec:
-  # Simplified spec for open-source version
-  # The namespace will be created automatically as: runai-llm-inference
+  # GPU quota - with fractions, 1 GPU can serve multiple pods!
   deservedGpus: 1
+  
+  # Optional: Allow using more GPUs when cluster has idle capacity
+  gpuOverQuotaWeight: 1
+  
+  # Optional: Resource limits per workload
+  cpuMaxLimit: "8"
+  memoryMaxLimit: "32Gi"
 
